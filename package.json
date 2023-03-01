@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "start": "node app.js",
+    "prod-start": "nodemon start-prod-server.js",
     "server": "nodemon app.js"
   },
   "keywords": [

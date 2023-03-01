@@ -1,3 +1,4 @@
 {
-  "PORT": 5000
+  "HOST": "geosp-data.ru",
+  "PORT": 443
 }

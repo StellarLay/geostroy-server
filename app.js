@@ -1,9 +1,8 @@
 import express from 'express';
-import config from 'config';
 import router from './routes/auth.routes.js';
 
 const app = express();
-const PORT = config.PORT || 5000;
+const PORT = 5000;
 
 app.use(express.json());
 app.use((req, res, next) => {
