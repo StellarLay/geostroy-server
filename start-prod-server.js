@@ -25,7 +25,7 @@ app.use('/api', router);
 
 app.use(express.static(path.join(__dirname, '../geostroy-client/build')));
 
-// get static files from React
+// get static files from Client
 app.get('*', (request, response) => {
   response.sendFile(
     path.resolve(__dirname + '../geostroy-client/build/index.html')

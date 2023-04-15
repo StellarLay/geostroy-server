@@ -1,15 +1,29 @@
 //import { validationResult } from 'express-validator';
 import queries from '../models/queries.js';
+import jwt from 'jsonwebtoken';
+
+// Костылим импорт конфига
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const config = require('../config/default.json');
 
 export const getObjects = async (req, res) => {
   queries
-    .getObjects()
+    .getObjects(req)
     .then((response) => {
-      res.status(200).send(response);
+      if (response.message === 'Invalid Token') {
+        res.status(200).json({
+          results: response.results,
+          error: response.message,
+          status: 403,
+        });
+      } else {
+        res.status(200).send({ results: response });
+      }
     })
 
     .catch((error) => {
-      res.status(400).send(error.message);
+      res.status(200).json(error);
     });
 };
 
@@ -113,4 +127,115 @@ export const addSensorData = async (req, res) => {
     .catch((error) => {
       res.status(400).send(error.message);
     });
+};
+
+export const authUser = async (req, res) => {
+  queries
+    .authUser(req.body)
+    .then((response) => {
+      res.status(200).send(response);
+    })
+
+    .catch((error) => {
+      res.status(400).json(error.message);
+    });
+};
+
+export const resetPass = async (req, res) => {
+  queries
+    .resetPass(req.body)
+    .then((response) => {
+      res.status(200).send(response);
+    })
+
+    .catch((error) => {
+      res.status(400).json(error.message);
+    });
+};
+
+export const removeObject = async (req, res) => {
+  const { id } = req.params;
+  queries
+    .removeObject(id)
+    .then((response) => {
+      res.status(200).send(response);
+    })
+
+    .catch((error) => {
+      res.status(400).json(error.message);
+    });
+};
+
+export const removeUser = async (req, res) => {
+  const { id } = req.params;
+  queries
+    .removeUser(id)
+    .then((response) => {
+      res.status(200).send(response);
+    })
+
+    .catch((error) => {
+      res.status(400).json(error.message);
+    });
+};
+
+export const getUsers = async (req, res) => {
+  queries
+    .getUsers()
+    .then((response) => {
+      res.status(200).send(response);
+    })
+
+    .catch((error) => {
+      res.status(400).json(error.message);
+    });
+};
+
+export const getAccessLevels = async (req, res) => {
+  queries
+    .getAccessLevels()
+    .then((response) => {
+      res.status(200).send(response);
+    })
+
+    .catch((error) => {
+      res.status(400).json(error.message);
+    });
+};
+
+export const getObjectsOfUser = async (req, res) => {
+  const { id } = req.params;
+
+  queries
+    .getObjectsOfUser(id)
+    .then((response) => {
+      res.status(200).send(response);
+    })
+
+    .catch((error) => {
+      res.status(400).json(error.message);
+    });
+};
+
+// Обновление токена
+export const createTokens = async (req, res) => {
+  const { refresh_token, user_id } = req.body;
+
+  if (!refresh_token) {
+    return res.sendStatus(403);
+  }
+
+  jwt.verify(refresh_token, config.jwtRefreshSecret, (err, user) => {
+    if (err) {
+      return res.status(200).json(err);
+    }
+
+    const accessToken = jwt.sign({ user_id: user_id }, config.jwtAccessSecret, {
+      expiresIn: config.expiresInAccess,
+    });
+
+    res.json({
+      accessToken,
+    });
+  });
 };

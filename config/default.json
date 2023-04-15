@@ -1,4 +1,8 @@
 {
   "HOST": "geosp-data.ru",
-  "PORT": 443
+  "PORT": 443,
+  "jwtAccessSecret": "geostroy",
+  "jwtRefreshSecret": "geosp",
+  "expiresInAccess": "5m",
+  "expiresInRefresh": "24h"
 }

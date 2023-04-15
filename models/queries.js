@@ -1,29 +1,76 @@
 import mysql from 'mysql2';
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
+import * as EmailValidator from 'email-validator';
 
-// db connect
-const connection = mysql.createConnection({
+// Костылим импорт конфига
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const config = require('../config/default.json');
+
+// db connect START
+const db_config = {
   host: 'mysql.hosting.nic.ru',
   user: 'geo3852847_mysql',
   password: 'X1-rZEfM',
   database: 'geo3852847_db',
-});
+};
 
-const getObjects = () => {
+var connection;
+
+function handleDisconnect() {
+  connection = mysql.createConnection(db_config);
+  connection.query('SET SESSION wait_timeout = 604800');
+
+  connection.connect(function (err) {
+    if (err) {
+      console.log('error when connecting to db:', err);
+      setTimeout(handleDisconnect, 2000);
+    }
+  });
+  connection.on('error', function (err) {
+    console.log('db error', err);
+    if (err.code === 'PROTOCOL_CONNECTION_LOST') {
+      handleDisconnect();
+    } else {
+      throw err;
+    }
+  });
+}
+
+handleDisconnect();
+// db connect END
+
+// Check tokens START
+// * Проверяем, просрочен ли access_token
+const checkToken = (access_token) => {
+  return jwt.verify(access_token, config.jwtAccessSecret, (err, user) => {
+    if (err) {
+      return true;
+    }
+  });
+};
+// Check tokens END
+
+const getObjects = (body) => {
   return new Promise((resolve, reject) => {
     connection.connect();
+    connection.query('SELECT * FROM objects', (error, results) => {
+      const isInvalidToken = checkToken(body.access_token);
 
-    connection.query(
-      'SELECT * FROM objects',
-      //[email, password],
-      (error, results) => {
-        if (error) {
-          let message = 'Объекты не найдены.';
-          reject({ ...error, message: message });
-        }
-        //connection.end();
-        resolve(results);
+      // Если токен просрочен
+      if (isInvalidToken) {
+        let message = 'Invalid Token';
+        resolve({ results, message });
       }
-    );
+
+      if (error) {
+        let message = 'Объекты не найдены.';
+        reject({ ...error, message: message });
+      }
+
+      resolve(results);
+    });
   });
 };
 
@@ -190,6 +237,216 @@ const addSensorData = (body) => {
   });
 };
 
+const removeObject = (object_id) => {
+  return new Promise((resolve, reject) => {
+    connection.connect();
+
+    const sql = `DELETE FROM objects WHERE id=${object_id}`;
+
+    connection.query(sql, (error, results) => {
+      if (error) {
+        let message = 'Не удалось удалить объект...';
+        reject({ ...error, message: message });
+      }
+      resolve(results);
+    });
+  });
+};
+
+const removeUser = (user_id) => {
+  return new Promise((resolve, reject) => {
+    connection.connect();
+
+    const sql = `DELETE FROM users WHERE id=${user_id}`;
+
+    connection.query(sql, (error, results) => {
+      if (error) {
+        let message = 'Не удалось удалить пользователя...';
+        reject({ ...error, message: message });
+      }
+      resolve(results);
+    });
+  });
+};
+
+const getUsers = () => {
+  return new Promise((resolve, reject) => {
+    connection.connect();
+
+    const sql = `SELECT u.id, u.FIO, u.email, u.access_lvl, al.name AS access_name
+    FROM users AS u
+    INNER JOIN access_levels AS al ON al.id = u.access_lvl;`;
+
+    connection.query(sql, (error, results) => {
+      if (error) {
+        let message = 'Пользователи не найдены...';
+        reject({ ...error, message: message });
+      }
+
+      resolve(results);
+    });
+  });
+};
+
+const getAccessLevels = () => {
+  return new Promise((resolve, reject) => {
+    connection.connect();
+
+    const sql = `SELECT id, name as value, name as label FROM access_levels;`;
+
+    connection.query(sql, (error, results) => {
+      if (error) {
+        let message = 'Данные не найдены...';
+        reject({ ...error, message: message });
+      }
+
+      resolve(results);
+    });
+  });
+};
+
+const getObjectsOfUser = (user_id) => {
+  return new Promise((resolve, reject) => {
+    connection.connect();
+
+    const sql = `SELECT uob.user_id, uob.object_id, ob.name
+    FROM objects AS ob
+    INNER JOIN users_objects AS uob ON uob.object_id = ob.id
+    WHERE uob.user_id = ${user_id};`;
+
+    connection.query(sql, (error, results) => {
+      if (error) {
+        let message = 'Данные не найдены...';
+        reject({ ...error, message: message });
+      }
+
+      resolve(results);
+    });
+  });
+};
+
+// Auth query START
+const authUser = (body) => {
+  return new Promise((resolve, reject) => {
+    const { email, password } = body;
+    //console.log(body);
+    connection.connect();
+
+    const sql = `SELECT u.id, u.email, u.password, u.access_lvl, al.name AS access_name FROM users AS u
+    INNER JOIN access_levels AS al ON u.access_lvl = al.id WHERE email="${email}"`;
+
+    connection.query(sql, async (error, results) => {
+      let message = '';
+      let isMatch;
+      let user;
+
+      // Если пользователя нет в БД
+      if (!results[0]) {
+        reject({ ...error, message: 'Пользователь не найден!' });
+      }
+
+      // Если логин или пароль не заполнены
+      else if (!email || !password) {
+        reject({ ...error, message: 'Логин или пароль введены неверно!' });
+      }
+
+      // Валидация email
+      else if (!EmailValidator.validate(email)) {
+        reject({ ...error, message: 'Email введен некорректно!' });
+      }
+
+      // Проверяем соответствие пароля с БД
+      else {
+        isMatch = await bcrypt.compare(password, results[0].password);
+      }
+
+      // Если пароль не совпадает
+      if (!isMatch) {
+        message = 'Неверный пароль, попробуйте ещё раз';
+        reject({ ...error, message: message });
+      }
+
+      // Генерируем jwt и формируем тело для отправки ответа
+      else {
+        // Access token
+        const accessToken = jwt.sign(
+          { user_id: results[0].id },
+          config.jwtAccessSecret,
+          {
+            expiresIn: config.expiresInAccess,
+          }
+        );
+
+        // Refresh token
+        const refreshToken = jwt.sign(
+          { user_id: results[0].id },
+          config.jwtRefreshSecret,
+          {
+            expiresIn: config.expiresInRefresh,
+          }
+        );
+
+        user = results[0];
+        user.accessToken = accessToken;
+        user.refreshToken = refreshToken;
+      }
+
+      // Прочие ошибки
+      if (error) {
+        message = 'Что-то пошло не так, попробуйте снова...';
+        reject({ ...error, message: message });
+      }
+
+      resolve(user);
+    });
+  });
+};
+// Auth query END
+
+// Reset pass query START
+const resetPass = (body) => {
+  return new Promise(async (resolve, reject) => {
+    const { email, newpass } = body;
+    //console.log(body);
+    connection.connect();
+
+    // Хэшируем пароль
+    const hashedPassword = await bcrypt.hash(newpass, 12);
+    const sql = `UPDATE users SET password = '${hashedPassword}' WHERE email = '${email}';`;
+
+    connection.query(sql, async (error, results) => {
+      let message = '';
+
+      // Если логин или пароль не заполнены
+      if (!email) {
+        reject({ ...error, message: 'Введите email!' });
+      }
+
+      // Если пользователя нет в БД
+      else if (results.affectedRows === 0) {
+        reject({
+          ...error,
+          message: 'Пользователь с указанным email не найден!',
+        });
+      }
+
+      // Валидация email
+      else if (!EmailValidator.validate(email)) {
+        reject({ ...error, message: 'Email введен некорректно!' });
+      }
+
+      // Прочие ошибки
+      if (error) {
+        message = 'Что-то пошло не так, попробуйте снова...';
+        reject({ ...error, message: message });
+      }
+
+      resolve(results);
+    });
+  });
+};
+// Reset pass query END
+
 export default {
   getObjects,
   getPiezometers,
@@ -200,4 +457,11 @@ export default {
   addSensorToPiezo,
   getSensorName,
   addSensorData,
+  removeObject,
+  authUser,
+  resetPass,
+  getUsers,
+  removeUser,
+  getAccessLevels,
+  getObjectsOfUser,
 };
