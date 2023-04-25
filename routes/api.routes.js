@@ -14,6 +14,9 @@ import {
   removeUser,
   getAccessLevels,
   getObjectsOfUser,
+  updateUser,
+  addUser,
+  updateUsersOfObjects,
 } from '../controllers/main.js';
 
 // * Получаем отправленный bearer и оставляем от него только токен
@@ -32,7 +35,7 @@ const verifyToken = (req, res, next) => {
 
 const router = Router();
 
-router.get('/getObjects', verifyToken, getObjects);
+router.post('/getObjects', verifyToken, getObjects);
 router.get('/getPiezometers/:id', getPiezometers);
 router.get('/getSensors/:id', getSensors);
 router.get('/getObjectsPiezoSensors/:id', getObjectsPiezoSensors);
@@ -43,8 +46,11 @@ router.get('/getSensorName/:id', getSensorName);
 router.post('/addSensorData', addSensorData);
 router.delete('/removeObject/:id', removeObject);
 router.delete('/removeUser/:id', removeUser);
-router.get('/getUsers', getUsers);
+router.get('/getUsers', verifyToken, getUsers);
 router.get('/getAccess', getAccessLevels);
 router.get('/getObjectsOfUser/:id', getObjectsOfUser);
+router.post('/updateUser', updateUser);
+router.post('/addUser', addUser);
+router.post('/updateUsersOfObjects/:id', updateUsersOfObjects);
 
 export default router;

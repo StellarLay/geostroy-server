@@ -9,7 +9,7 @@ const config = require('../config/default.json');
 
 export const getObjects = async (req, res) => {
   queries
-    .getObjects(req)
+    .getObjects(req.body)
     .then((response) => {
       if (response.message === 'Invalid Token') {
         res.status(200).json({
@@ -49,7 +49,7 @@ export const getSensors = async (req, res) => {
     })
 
     .catch((error) => {
-      res.status(400).send(error.message);
+      res.status(200).json(error.message);
     });
 };
 
@@ -181,9 +181,17 @@ export const removeUser = async (req, res) => {
 
 export const getUsers = async (req, res) => {
   queries
-    .getUsers()
+    .getUsers(req)
     .then((response) => {
-      res.status(200).send(response);
+      if (response.message === 'Invalid Token') {
+        res.status(200).json({
+          results: response.results,
+          error: response.message,
+          status: 403,
+        });
+      } else {
+        res.status(200).send({ results: response });
+      }
     })
 
     .catch((error) => {
@@ -208,6 +216,44 @@ export const getObjectsOfUser = async (req, res) => {
 
   queries
     .getObjectsOfUser(id)
+    .then((response) => {
+      res.status(200).send(response);
+    })
+
+    .catch((error) => {
+      res.status(400).json(error.message);
+    });
+};
+
+export const updateUser = async (req, res) => {
+  queries
+    .updateUser(req.body)
+    .then((response) => {
+      res.status(200).send(response);
+    })
+
+    .catch((error) => {
+      res.status(400).json(error.message);
+    });
+};
+
+export const addUser = async (req, res) => {
+  queries
+    .addUser(req.body)
+    .then((response) => {
+      res.status(200).send(response);
+    })
+
+    .catch((error) => {
+      res.status(400).json(error.message);
+    });
+};
+
+export const updateUsersOfObjects = async (req, res) => {
+  const { id } = req.params;
+
+  queries
+    .updateUsersOfObjects(req.body, id)
     .then((response) => {
       res.status(200).send(response);
     })

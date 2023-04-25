@@ -14,6 +14,7 @@ const db_config = {
   user: 'geo3852847_mysql',
   password: 'X1-rZEfM',
   database: 'geo3852847_db',
+  multipleStatements: true,
 };
 
 var connection;
@@ -54,8 +55,24 @@ const checkToken = (access_token) => {
 
 const getObjects = (body) => {
   return new Promise((resolve, reject) => {
+    const { access_name, user_id } = body;
+
+    let sql = '';
+
+    // Если вы администратор, то выводим все объекты
+    if (access_name === 'Администратор') {
+      sql = `SELECT * FROM objects;`;
+    }
+
+    // Если заказчик, то выводим его объекты
+    else if (access_name === 'Клиент' || access_name === 'Гость') {
+      sql = `SELECT ob.id, ob.name, uob.user_id FROM objects AS ob 
+      INNER JOIN users_objects AS uob ON uob.object_id = ob.id 
+      WHERE uob.user_id = ${user_id};`;
+    }
+
     connection.connect();
-    connection.query('SELECT * FROM objects', (error, results) => {
+    connection.query(sql, (error, results) => {
       const isInvalidToken = checkToken(body.access_token);
 
       // Если токен просрочен
@@ -269,7 +286,7 @@ const removeUser = (user_id) => {
   });
 };
 
-const getUsers = () => {
+const getUsers = (body) => {
   return new Promise((resolve, reject) => {
     connection.connect();
 
@@ -278,6 +295,14 @@ const getUsers = () => {
     INNER JOIN access_levels AS al ON al.id = u.access_lvl;`;
 
     connection.query(sql, (error, results) => {
+      const isInvalidToken = checkToken(body.access_token);
+
+      // Если токен просрочен
+      if (isInvalidToken) {
+        let message = 'Invalid Token';
+        resolve({ results, message });
+      }
+
       if (error) {
         let message = 'Пользователи не найдены...';
         reject({ ...error, message: message });
@@ -305,6 +330,7 @@ const getAccessLevels = () => {
   });
 };
 
+// Получение объектов, привязанных к user_id
 const getObjectsOfUser = (user_id) => {
   return new Promise((resolve, reject) => {
     connection.connect();
@@ -320,6 +346,90 @@ const getObjectsOfUser = (user_id) => {
         reject({ ...error, message: message });
       }
 
+      resolve(results);
+    });
+  });
+};
+
+// Запрос на редактирование юзера
+const updateUser = (body) => {
+  return new Promise((resolve, reject) => {
+    const { user_id, FIO, email, access_lvl } = body;
+
+    connection.connect();
+
+    const sql = `UPDATE users AS u
+    SET u.FIO = '${FIO}', u.email = '${email}', u.access_lvl = ${access_lvl}
+    WHERE u.id = ${user_id};`;
+
+    connection.query(sql, (error, results) => {
+      if (error) {
+        let message = error;
+        reject({ ...error, message: message });
+      }
+      resolve(results);
+    });
+  });
+};
+
+// Запрос на добавление юзера
+const addUser = (body) => {
+  return new Promise((resolve, reject) => {
+    const { FIO, email, password, access_lvl } = body;
+
+    const saltRounds = 12;
+    const hash = bcrypt.hashSync(password, saltRounds);
+
+    if (FIO !== '' && email !== '' && password !== '') {
+      connection.connect();
+
+      const sql = `INSERT INTO users (FIO, email, password, access_lvl) VALUES ('${FIO}', '${email}', '${hash}', ${access_lvl})`;
+
+      connection.query(sql, (error, results) => {
+        if (error) {
+          let message;
+
+          if (error.code === 'ER_DUP_ENTRY') {
+            message = 'Пользователь с таким email уже существует';
+          } else {
+            message = error;
+          }
+
+          reject({ message: message });
+        }
+        resolve(results);
+      });
+    }
+  });
+};
+
+// Запрос на обновление привязанных к юзеру объектов
+const updateUsersOfObjects = (body, user_id) => {
+  return new Promise((resolve, reject) => {
+    connection.connect();
+
+    // Получаем объекты и приводим к виду ?, ?, ?
+    let getObjectsId = body.activeObjects.map((item) => item.id);
+    let objectsIdJoin = getObjectsId.join(', ');
+
+    let sqlDelete = '';
+    // Удаляем те объекты, которые юзер убрал
+    if (body.activeObjects.length !== 0) {
+      sqlDelete = `DELETE FROM users_objects WHERE user_id = ${user_id} AND (object_id) NOT IN (${objectsIdJoin});`;
+    } else {
+      sqlDelete = `DELETE FROM users_objects WHERE user_id = ${user_id};`;
+    }
+
+    // Затем если был добавлен новый объект, то вставляем его, а если объект уже существует, то ничего не делаем (оставляем запись)
+    const sqlInsert = `INSERT INTO users_objects (user_id, object_id) VALUES ${[
+      body.activeObjects.map((item) => '(' + [user_id, item.id] + ')'),
+    ]} AS newRow ON DUPLICATE KEY UPDATE user_id = newRow.user_id, object_id = newRow.object_id;`;
+
+    connection.query(`${sqlDelete} ${sqlInsert}`, (error, results) => {
+      if (error) {
+        let message = error;
+        reject({ ...error, message: message });
+      }
       resolve(results);
     });
   });
@@ -464,4 +574,7 @@ export default {
   removeUser,
   getAccessLevels,
   getObjectsOfUser,
+  updateUser,
+  addUser,
+  updateUsersOfObjects,
 };
