@@ -263,6 +263,18 @@ export const updateUsersOfObjects = async (req, res) => {
     });
 };
 
+export const createPiezometer = async (req, res) => {
+  queries
+    .createPiezometer(req.body)
+    .then((response) => {
+      res.status(200).send(response);
+    })
+
+    .catch((error) => {
+      res.status(400).json(error.message);
+    });
+};
+
 // Обновление токена
 export const createTokens = async (req, res) => {
   const { refresh_token, user_id } = req.body;

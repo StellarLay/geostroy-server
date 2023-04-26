@@ -435,6 +435,54 @@ const updateUsersOfObjects = (body, user_id) => {
   });
 };
 
+// Запрос на добавление скважины
+const createPiezometer = (body) => {
+  return new Promise((resolve, reject) => {
+    const { name, object_id, user_id } = body;
+
+    connection.connect();
+
+    const sqlAdd = `INSERT INTO piezometers (name, user_id) VALUES ('${name}', ${user_id})`;
+    const sqlGet = `SELECT id FROM piezometers WHERE name='${name}'`;
+
+    // Добавляем новую скважину
+    connection.query(sqlAdd, (error, results) => {
+      if (error) {
+        let message;
+
+        if (error.code === 'ER_DUP_ENTRY') {
+          message = 'Данная скважина уже существует!';
+        } else {
+          message = error;
+        }
+
+        reject({ message: message });
+      }
+
+      // Получаем её id
+      connection.query(sqlGet, (error, results) => {
+        if (error) {
+          let message = error;
+          reject({ message: message });
+        }
+
+        const sqlBind = `INSERT INTO objects_piezometers_sensors (object_id, piezometer_id) VALUES (${object_id}, ${results[0].id})`;
+        // Связываем с объектом
+        connection.query(sqlBind, (error, results) => {
+          if (error) {
+            let message = error;
+            reject({ message: message });
+          }
+
+          resolve(results);
+        });
+        //resolve(results);
+      });
+      //resolve(results);
+    });
+  });
+};
+
 // Auth query START
 const authUser = (body) => {
   return new Promise((resolve, reject) => {
@@ -577,4 +625,5 @@ export default {
   updateUser,
   addUser,
   updateUsersOfObjects,
+  createPiezometer,
 };

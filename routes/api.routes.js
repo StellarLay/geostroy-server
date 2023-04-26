@@ -17,6 +17,7 @@ import {
   updateUser,
   addUser,
   updateUsersOfObjects,
+  createPiezometer,
 } from '../controllers/main.js';
 
 // * Получаем отправленный bearer и оставляем от него только токен
@@ -51,6 +52,7 @@ router.get('/getAccess', getAccessLevels);
 router.get('/getObjectsOfUser/:id', getObjectsOfUser);
 router.post('/updateUser', updateUser);
 router.post('/addUser', addUser);
+router.post('/createPiezometer', createPiezometer);
 router.post('/updateUsersOfObjects/:id', updateUsersOfObjects);
 
 export default router;
