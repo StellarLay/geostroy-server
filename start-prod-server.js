@@ -6,6 +6,9 @@ import { fileURLToPath } from 'url';
 import config from 'config';
 import router from './routes/auth.routes.js';
 
+import apiRouter from './routes/api.routes.js';
+import authRouter from './routes/auth.routes.js';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -13,22 +16,31 @@ const app = express();
 
 app.use(express.json());
 app.use((req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
-  res.setHeader(
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header(
+    'Access-Control-Allow-Methods',
+    'GET,HEAD,OPTIONS,POST,PUT, DELETE'
+  );
+  res.header(
     'Access-Control-Allow-Headers',
-    'Content-Type, Access-Control-Allow-Headers'
+    'Origin, X-Requested-With, Content-Type, Accept, Authorization'
   );
   next();
 });
-app.use('/api', router);
+app.use('/api', apiRouter);
+app.use('/auth', authRouter);
 
-app.use(express.static(path.join(__dirname, '../geostroy-client/build')));
+app.use(express.static(path.join('../geostroy-client/build')));
 
-// get static files from Client
-app.get('*', (request, response) => {
-  response.sendFile(
-    path.resolve(__dirname + '../geostroy-client/build/index.html')
+// get static files from React
+app.get('/*', (req, res) => {
+  res.sendFile(
+    path.join(__dirname, '../geostroy-client/build', 'index.html'),
+    (err) => {
+      if (err) {
+        console.log(err);
+      }
+    }
   );
 });
 
