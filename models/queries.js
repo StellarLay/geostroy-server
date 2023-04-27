@@ -109,7 +109,13 @@ const getPiezometers = (object_id) => {
 const getSensors = (piezo_id) => {
   return new Promise((resolve, reject) => {
     connection.connect();
-    const sql = `SELECT sd.id, sd.sensor_id, sd.piezometer_id, error_code, battery_voltage, battery_charge, s.name AS sensor_name, lvl_m, lvl_m_corr, device_time, message_arr_time
+    // const sql = `SELECT sd.id, sd.sensor_id, sd.piezometer_id, error_code, battery_voltage, battery_charge, s.name AS sensor_name, lvl_m, lvl_m_corr, device_time, message_arr_time
+    // FROM sensors_data AS sd
+    // INNER JOIN sensors AS s ON s.sensor_id = sd.sensor_id
+    // WHERE sd.piezometer_id = ${piezo_id}
+    // ORDER BY message_arr_time DESC`;
+
+    const sql = `SELECT sd.id, sd.sensor_id, sd.piezometer_id, sd.adc_lvl, sd.lvl_m, sd.lvl_m_corr, sd.battery_voltage, sd.battery_charge, sd.error_code, s.name AS sensor_name, sd.device_time, sd.message_arr_time, sd.working_mode, sd.sleep_time
     FROM sensors_data AS sd 
     INNER JOIN sensors AS s ON s.sensor_id = sd.sensor_id
     WHERE sd.piezometer_id = ${piezo_id}
@@ -263,6 +269,22 @@ const removeObject = (object_id) => {
     connection.query(sql, (error, results) => {
       if (error) {
         let message = 'Не удалось удалить объект...';
+        reject({ ...error, message: message });
+      }
+      resolve(results);
+    });
+  });
+};
+
+const removePiezo = (piezo_id) => {
+  return new Promise((resolve, reject) => {
+    connection.connect();
+
+    const sql = `DELETE FROM piezometers WHERE id=${piezo_id}`;
+
+    connection.query(sql, (error, results) => {
+      if (error) {
+        let message = 'Не удалось удалить скважину...';
         reject({ ...error, message: message });
       }
       resolve(results);
@@ -626,4 +648,5 @@ export default {
   addUser,
   updateUsersOfObjects,
   createPiezometer,
+  removePiezo,
 };

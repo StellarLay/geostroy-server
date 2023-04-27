@@ -166,6 +166,19 @@ export const removeObject = async (req, res) => {
     });
 };
 
+export const removePiezo = async (req, res) => {
+  const { id } = req.params;
+  queries
+    .removePiezo(id)
+    .then((response) => {
+      res.status(200).send(response);
+    })
+
+    .catch((error) => {
+      res.status(400).json(error.message);
+    });
+};
+
 export const removeUser = async (req, res) => {
   const { id } = req.params;
   queries

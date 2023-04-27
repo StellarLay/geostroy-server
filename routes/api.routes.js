@@ -18,6 +18,7 @@ import {
   addUser,
   updateUsersOfObjects,
   createPiezometer,
+  removePiezo,
 } from '../controllers/main.js';
 
 // * Получаем отправленный bearer и оставляем от него только токен
@@ -46,6 +47,7 @@ router.put('/addSensorToPiezo/:piezo_id/:sensor_id', addSensorToPiezo);
 router.get('/getSensorName/:id', getSensorName);
 router.post('/addSensorData', addSensorData);
 router.delete('/removeObject/:id', removeObject);
+router.delete('/removePiezo/:id', removePiezo);
 router.delete('/removeUser/:id', removeUser);
 router.get('/getUsers', verifyToken, getUsers);
 router.get('/getAccess', getAccessLevels);
