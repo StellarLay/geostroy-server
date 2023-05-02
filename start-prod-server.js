@@ -8,6 +8,7 @@ import router from './routes/auth.routes.js';
 
 import apiRouter from './routes/api.routes.js';
 import authRouter from './routes/auth.routes.js';
+import dataRouter from './routes/data.routes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -29,6 +30,7 @@ app.use((req, res, next) => {
 });
 app.use('/api', apiRouter);
 app.use('/auth', authRouter);
+app.use('/data', dataRouter);
 
 app.use(express.static(path.join('../geostroy-client/build')));
 
