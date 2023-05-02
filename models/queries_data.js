@@ -45,6 +45,8 @@ const addData = (body) => {
     // По умолчанию ни к какой скважине датчик не привязан
     let piezometer_id = null;
 
+    let sensor_id = 0;
+    let sensor_name = data[0];
     let adc_lvl = data[1];
     let lvl_m = data[2];
     let lvl_m_corr = data[3];
@@ -71,14 +73,14 @@ const addData = (body) => {
 
     //connection.connect();
 
-    const sqlAddSensor = `INSERT INTO sensors (name) VALUES ('${data[0]}')`;
-    const sqlGetSensor = `SELECT sensor_id FROM sensors WHERE name='${data[0]}'`;
+    const sqlAddSensor = `INSERT INTO sensors (name) VALUES ('${sensor_name}')`;
+    const sqlGetSensor = `SELECT sensor_id FROM sensors WHERE name='${sensor_name}'`;
 
     // Добавляем датчик в sensors (Если его ещё нет)
     connection.query(sqlAddSensor, (error, results) => {
       // Получаем id датчика
       connection.query(sqlGetSensor, (error, results) => {
-        // console.log(results[0].sensor_id);
+        sensor_id = results[0].sensor_id;
         // console.log(adc_lvl);
         // console.log(lvl_m);
         // console.log(lvl_m_corr);
@@ -91,7 +93,7 @@ const addData = (body) => {
 
         const sqlAdd = `INSERT INTO sensors_data (sensor_id, piezometer_id, adc_lvl, lvl_m, lvl_m_corr, battery_voltage, battery_charge, error_code, device_time, message_arr_time, working_mode, sleep_time)
           VALUES (
-            ${results[0].sensor_id},
+            ${sensor_id},
             ${piezometer_id},
             ${adc_lvl},
             ${lvl_m},
@@ -104,13 +106,22 @@ const addData = (body) => {
             ${working_mode},
             '${sleep_time}');`;
 
-        //Связываем с объектом
+        // Добавляем данные
         connection.query(sqlAdd, (error, results) => {
-          if (error) {
-            let message = error;
-            reject({ message: message });
-          }
-          resolve(results);
+          const sqlGetSettings = `SELECT * FROM sensors_settings WHERE sensor_id='${sensor_id}'`;
+
+          connection.query(sqlGetSettings, (error, results) => {
+            let res = `[
+                ${sensor_name};
+                ${results[0].sensor_mode};
+                ${results[0].sleep_mode};
+                ${results[0].sleep_time};
+                ${results[0].adjustment};
+                ${results[0].max_depth_measuring};
+                ${results[0].phone}]`;
+
+            resolve(res);
+          });
         });
       });
     });

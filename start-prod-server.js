@@ -1,5 +1,6 @@
 import express from 'express';
 import https from 'https';
+import http from 'http';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -56,6 +57,7 @@ var options = {
 };
 
 // Listen server
+http.createServer(app).listen(80);
 var server = https.createServer(options, app);
 
 server.listen(PORT, HOST, function () {
