@@ -1,9 +1,10 @@
 import { Router } from 'express';
-import { addData } from '../controllers/data.js';
+import { addData, getSettings } from '../controllers/data.js';
 
 const router = Router();
 
 router.get('/add', addData);
+router.get('/settings', getSettings);
 
 export default router;
 
