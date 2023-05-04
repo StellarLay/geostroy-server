@@ -129,6 +129,18 @@ export const addSensorData = async (req, res) => {
     });
 };
 
+export const changeSensorData = async (req, res) => {
+  queries
+    .changeSensorData(req.body)
+    .then((response) => {
+      res.status(200).send(response);
+    })
+
+    .catch((error) => {
+      res.status(400).json(error.message);
+    });
+};
+
 export const authUser = async (req, res) => {
   queries
     .authUser(req.body)
@@ -157,6 +169,19 @@ export const removeObject = async (req, res) => {
   const { id } = req.params;
   queries
     .removeObject(id)
+    .then((response) => {
+      res.status(200).send(response);
+    })
+
+    .catch((error) => {
+      res.status(400).json(error.message);
+    });
+};
+
+export const removeSensor = async (req, res) => {
+  const { id } = req.params;
+  queries
+    .removeSensor(id)
     .then((response) => {
       res.status(200).send(response);
     })

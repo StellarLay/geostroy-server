@@ -64,9 +64,6 @@ const addData = (body) => {
       .map((part) => part.split('/').reverse().join('/'))
       .join(' ');
 
-    //console.log(device_time);
-    //console.log(device_time_mysql_format);
-
     // Содержит ли adc_lvl цифры (Если нет, то это ошибка и присваиваем -1)
     let isDigitAdcLvl = /[0-9]/.test(adc_lvl);
 

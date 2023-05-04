@@ -260,6 +260,75 @@ const addSensorData = (body) => {
   });
 };
 
+const changeSensorData = (body) => {
+  return new Promise((resolve, reject) => {
+    let {
+      sensor_id,
+      adc_lvl,
+      lvl_m,
+      lvl_m_corr,
+      battery_voltage,
+      battery_charge,
+      error_code,
+      device_time,
+      message_arr_time,
+      working_mode,
+      sleep_time,
+    } = body;
+
+    //connection.connect();
+
+    // Приводим message_arr_time к нужному mysql формату
+    message_arr_time = message_arr_time
+      .split(' ')
+      .map((part) => part.split('/').reverse().join('/'))
+      .join(' ');
+
+    // Приводим device_time к нужному mysql формату
+    device_time = device_time
+      .split(' ')
+      .map((part) => part.split('/').reverse().join('/'))
+      .join(' ');
+
+    const sql = `UPDATE sensors_data SET
+    adc_lvl = ${adc_lvl}, 
+    lvl_m = ${lvl_m}, 
+    lvl_m_corr = ${lvl_m_corr}, 
+    battery_voltage = ${battery_voltage}, 
+    battery_charge = ${battery_charge}, 
+    error_code = ${error_code}, 
+    device_time = '${device_time}', 
+    message_arr_time = '${message_arr_time}', 
+    working_mode = ${working_mode}, 
+    sleep_time = '${sleep_time}'
+    WHERE sensor_id = ${sensor_id};`;
+
+    connection.query(sql, (error, results) => {
+      if (error) {
+        let message = error;
+        reject({ ...error, message: message });
+      }
+      resolve(results);
+    });
+  });
+};
+
+const removeSensor = (id) => {
+  return new Promise((resolve, reject) => {
+    connection.connect();
+
+    const sql = `DELETE FROM sensors_data WHERE id=${id}`;
+
+    connection.query(sql, (error, results) => {
+      if (error) {
+        let message = 'Не удалось удалить показание...';
+        reject({ ...error, message: message });
+      }
+      resolve(results);
+    });
+  });
+};
+
 const removeObject = (object_id) => {
   return new Promise((resolve, reject) => {
     connection.connect();
@@ -637,6 +706,7 @@ export default {
   addSensorToPiezo,
   getSensorName,
   addSensorData,
+  changeSensorData,
   removeObject,
   authUser,
   resetPass,
@@ -649,4 +719,5 @@ export default {
   updateUsersOfObjects,
   createPiezometer,
   removePiezo,
+  removeSensor,
 };
