@@ -76,7 +76,6 @@ const getObjects = (body) => {
 
     connection.connect();
     connection.query(sql, (error, results) => {
-      console.log(results);
       const isInvalidToken = checkToken(body.access_token);
 
       // Если токен просрочен
