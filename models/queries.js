@@ -55,7 +55,7 @@ const checkToken = (access_token) => {
 
 const getObjects = (body) => {
   return new Promise((resolve, reject) => {
-    const { access_name, user_id } = body;
+    const { access_name, user_id } = body.body;
 
     let sql = '';
 
@@ -66,13 +66,17 @@ const getObjects = (body) => {
 
     // Если заказчик, то выводим его объекты
     else if (access_name === 'Клиент' || access_name === 'Гость') {
-      sql = `SELECT ob.id, ob.name, uob.user_id FROM objects AS ob 
-      INNER JOIN users_objects AS uob ON uob.object_id = ob.id 
-      WHERE uob.user_id = ${user_id};`;
+      // sql = `SELECT ob.id, ob.name, uob.user_id FROM objects AS ob
+      // INNER JOIN users_objects AS uob ON uob.object_id = ob.id
+      // WHERE uob.user_id = ${user_id};`;
+      sql = `SELECT DISTINCT(ob.id), ob.name, ops.user_id FROM objects_piezometers_sensors AS ops
+      INNER JOIN objects AS ob ON ops.object_id = ob.id
+      WHERE ops.user_id=${user_id}`;
     }
 
     connection.connect();
     connection.query(sql, (error, results) => {
+      console.log(results);
       const isInvalidToken = checkToken(body.access_token);
 
       // Если токен просрочен
@@ -101,6 +105,39 @@ const getPiezometers = (object_id) => {
         let message = 'Скважины не найдены.';
         reject({ ...error, message: message });
       }
+      resolve(results);
+    });
+  });
+};
+
+const getPiezometersForClients = (body) => {
+  return new Promise((resolve, reject) => {
+    const { access_name, user_id, object_id, type } = body;
+
+    connection.connect();
+
+    let sql = '';
+
+    if (access_name === 'Администратор') {
+      sql = `SELECT ops.id, ops.object_id, ops.piezometer_id, ops.sensor_id, p.name, ops.user_id FROM objects_piezometers_sensors AS ops
+      INNER JOIN piezometers AS p ON ops.piezometer_id = p.id;`;
+    } else {
+      sql = `SELECT ops.id, ops.object_id, ops.piezometer_id, ops.sensor_id, p.name, ops.user_id FROM objects_piezometers_sensors AS ops
+      INNER JOIN piezometers AS p ON ops.piezometer_id = p.id WHERE ops.object_id=${object_id} AND ops.user_id=${user_id}`;
+    }
+
+    // Если мы в настройках вытягиваем скважины, принадлежащие конкретному юзеру
+    if (access_name !== 'Администратор' && type === 'settings') {
+      sql = `SELECT ops.id, ops.object_id, ops.piezometer_id, ops.sensor_id, p.name, ops.user_id FROM objects_piezometers_sensors AS ops
+      INNER JOIN piezometers AS p ON ops.piezometer_id = p.id WHERE ops.user_id=${user_id}`;
+    }
+
+    connection.query(sql, (error, results) => {
+      if (error) {
+        let message = 'Данные не найдены.';
+        reject({ ...error, message: message });
+      }
+
       resolve(results);
     });
   });
@@ -442,6 +479,73 @@ const getObjectsOfUser = (user_id) => {
   });
 };
 
+// Получение объектов, привязанных к user_id
+const getPermissions = () => {
+  return new Promise((resolve, reject) => {
+    connection.connect();
+
+    const sql = `SELECT ops.id, u.email, ops.user_id, ops.object_id, ob.name AS object_name, ops.piezometer_id, pz.name AS piezo_name
+    FROM objects_piezometers_sensors AS ops
+    INNER JOIN users AS u ON u.id = ops.user_id
+    INNER JOIN objects AS ob ON ob.id = ops.object_id
+    INNER JOIN piezometers AS pz ON pz.id = ops.piezometer_id;`;
+
+    connection.query(sql, (error, results) => {
+      if (error) {
+        let message = 'Данные не найдены...';
+        reject({ ...error, message: message });
+      }
+
+      resolve(results);
+    });
+  });
+};
+
+// Запрос на добавление скважины
+const addPermission = (body) => {
+  return new Promise((resolve, reject) => {
+    const { access_name, object_id, piezo_id, parent_user_id, user_id } = body;
+
+    connection.connect();
+
+    let sqlGet = '';
+
+    if (access_name === 'Администратор') {
+      sqlGet = `SELECT * FROM objects_piezometers_sensors WHERE piezometer_id=${piezo_id} AND object_id=${object_id}`;
+    } else {
+      sqlGet = `SELECT * FROM objects_piezometers_sensors WHERE piezometer_id=${piezo_id} AND user_id=${parent_user_id}`;
+    }
+
+    // Получаем строку, чтобы добавить ещё одного юзера к доступу
+    connection.query(sqlGet, (error, results) => {
+      if (error) {
+        let message;
+        reject({ message: message });
+      }
+
+      const sqlAdd = `INSERT INTO objects_piezometers_sensors (object_id, piezometer_id, sensor_id, user_id) VALUES (${results[0].object_id}, ${results[0].piezometer_id}, ${results[0].sensor_id}, ${user_id})`;
+
+      // Добавляем доступы
+      connection.query(sqlAdd, (error, results) => {
+        if (error) {
+          let message = error;
+
+          if (error.code === 'ER_DUP_ENTRY') {
+            message =
+              'У данного пользователя уже есть доступ к выбранной скважине!';
+          } else {
+            message = error;
+          }
+
+          reject({ message: message });
+        }
+
+        resolve(results);
+      });
+    });
+  });
+};
+
 // Запрос на редактирование юзера
 const updateUser = (body) => {
   return new Promise((resolve, reject) => {
@@ -557,9 +661,10 @@ const createPiezometer = (body) => {
           reject({ message: message });
         }
 
-        const sqlBind = `INSERT INTO objects_piezometers_sensors (object_id, piezometer_id) VALUES (${object_id}, ${results[0].id})`;
+        const sqlBind = `INSERT INTO objects_piezometers_sensors (object_id, piezometer_id, user_id) VALUES (${object_id}, ${results[0].id}, ${user_id});`;
+        const sqlBind2 = `INSERT INTO users_objects (object_id, user_id) VALUES (${object_id}, ${user_id});`;
         // Связываем с объектом
-        connection.query(sqlBind, (error, results) => {
+        connection.query(`${sqlBind} ${sqlBind2}`, (error, results) => {
           if (error) {
             let message = error;
             reject({ message: message });
@@ -720,4 +825,7 @@ export default {
   createPiezometer,
   removePiezo,
   removeSensor,
+  getPermissions,
+  getPiezometersForClients,
+  addPermission,
 };

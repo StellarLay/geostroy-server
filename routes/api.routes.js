@@ -21,6 +21,9 @@ import {
   createPiezometer,
   removePiezo,
   removeSensor,
+  getPermissions,
+  getPiezometersForClients,
+  addPermission,
 } from '../controllers/main.js';
 
 // * Получаем отправленный bearer и оставляем от него только токен
@@ -41,6 +44,8 @@ const router = Router();
 
 router.post('/getObjects', verifyToken, getObjects);
 router.get('/getPiezometers/:id', getPiezometers);
+//router.post('/getPiezometers', getPiezometers);
+router.post('/getPiezometersForClients', getPiezometersForClients);
 router.get('/getSensors/:id', getSensors);
 router.get('/getObjectsPiezoSensors/:id', getObjectsPiezoSensors);
 router.put('/unbindSensor/:id', unBindSensor);
@@ -59,6 +64,8 @@ router.get('/getObjectsOfUser/:id', getObjectsOfUser);
 router.post('/updateUser', updateUser);
 router.post('/addUser', addUser);
 router.post('/createPiezometer', createPiezometer);
+router.post('/addPermission', addPermission);
 router.post('/updateUsersOfObjects/:id', updateUsersOfObjects);
+router.get('/getPermissions', getPermissions);
 
 export default router;

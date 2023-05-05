@@ -9,7 +9,7 @@ const config = require('../config/default.json');
 
 export const getObjects = async (req, res) => {
   queries
-    .getObjects(req.body)
+    .getObjects(req)
     .then((response) => {
       if (response.message === 'Invalid Token') {
         res.status(200).json({
@@ -37,6 +37,30 @@ export const getPiezometers = async (req, res) => {
 
     .catch((error) => {
       res.status(400).send(error.message);
+    });
+};
+
+// export const getPiezometers = async (req, res) => {
+//   queries
+//     .getPiezometers(req.body)
+//     .then((response) => {
+//       res.status(200).send(response);
+//     })
+
+//     .catch((error) => {
+//       res.status(400).send(error.message);
+//     });
+// };
+
+export const getPiezometersForClients = async (req, res) => {
+  queries
+    .getPiezometersForClients(req.body)
+    .then((response) => {
+      res.status(200).send(response);
+    })
+
+    .catch((error) => {
+      res.status(400).json(error.message);
     });
 };
 
@@ -263,6 +287,18 @@ export const getObjectsOfUser = async (req, res) => {
     });
 };
 
+export const getPermissions = async (req, res) => {
+  queries
+    .getPermissions()
+    .then((response) => {
+      res.status(200).send(response);
+    })
+
+    .catch((error) => {
+      res.status(400).json(error.message);
+    });
+};
+
 export const updateUser = async (req, res) => {
   queries
     .updateUser(req.body)
@@ -304,6 +340,18 @@ export const updateUsersOfObjects = async (req, res) => {
 export const createPiezometer = async (req, res) => {
   queries
     .createPiezometer(req.body)
+    .then((response) => {
+      res.status(200).send(response);
+    })
+
+    .catch((error) => {
+      res.status(400).json(error.message);
+    });
+};
+
+export const addPermission = async (req, res) => {
+  queries
+    .addPermission(req.body)
     .then((response) => {
       res.status(200).send(response);
     })
